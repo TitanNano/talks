@@ -34,9 +34,15 @@ options:
 
 ---
 
-<!-- speaker_note: Comparison of async systems (5 min) -->
-<!-- speaker_note: explanation of initial POC (5 min) -->
-<!-- speaker_note: Go through challenges (10 min) -->
+About Me
+===
+
+- tinkering with rust since 2018
+- Professionally doing rust since 2021
+- Contributing to godot-rust since Godot 4 rewrite
+- Joined the godot-rust maintainers in 2025
+
+<!-- end_slide -->
 
 Goals
 ===
@@ -238,7 +244,7 @@ Proof of Concept 4 / 4: Futures
 ===
 
 
-```rust +line_numbers {2,21|3-4|6-7,16-18|20|8|9|10|11|12-14}
+```rust +line_numbers {2,21|3-4|6-7,16-18|20|8|9-10|12-14}
 impl<R: FromSignalArgs> SignalFuture<R> {
   fn new(signal: Signal) -> Self {
     let state = Arc::new(Mutex::new((None, Option::<Waker>::None)));
@@ -300,6 +306,14 @@ Challenge 1: Please Don't Poll Yet!
 - Polling must happen in new call stack.
 - How can we poll "later"?
 
+<!-- pause -->
+---
+
+Solution
+===
+
+- start poll future in deferred godot callable
+
 <!-- end_slide -->
 
 Challenge 2: Signals Can Be Emitted on any Thread
@@ -309,9 +323,19 @@ Challenge 2: Signals Can Be Emitted on any Thread
 - Synchronous signal dispatch can cause subscribers to move between threads.
 - Non-thread-safe `Signal` arguments could move across threads.
 
+<!-- pause -->
+---
+
+Solution
+===
+
+- Godot's deferred calls always run on main-thread
+- Restrict `godot_task(...)` to main-thread.
+- Deferred polling solves both problems
+
 <!-- end_slide -->
 
-Solve Challenge 1 & 2: Poll Deferred
+Challenge 1 & 2 Changes
 ===
 
 ```rust +line_numbers {4-10|12|17-18}
@@ -416,7 +440,7 @@ And More
 
 - Catch panics and track which future they belong to.
 - `FutureSlot` state machine to track task states.
-- Full implementation contains more details.
+- Support for nested tasks (`godot_task(...)` inside other `godot_task`)
 - Some naming changed like `godot_task` -> `godot::task::spawn`
 
 <!-- end_slide -->
@@ -428,11 +452,12 @@ Links & Handles
 
 <!-- column: 0 -->
 # Project Links
-- Project Page: https://godot-rust.github.io
-- Repo: https://github.com/godot-rust/gdext
+- [Project Page](https://godot-rust.github.io)
+- [Repo](https://github.com/godot-rust/gdext)
+- [Full Implementation](https://github.com/godot-rust/gdext/tree/master/godot-core/src/task)
 
 # My Handles
-- Github: @TitanNano
+- GitHub: @TitanNano
 - Matrix: @titannano:mozilla.org
 - Mastodon: @titannano@mastodon.online
 
@@ -448,7 +473,7 @@ Project Page
 Solve Challenge 4: Impl 1 / 3
 ===
 
-```rust +line_numbers {5,19|9-11|13}
+```rust +line_numbers {9-13}
 pub struct SignalFutureResolver<R: IntoDynamicSend> {
   data: Arc<Mutex<SignalFutureData<R::Target>>>,
 }
@@ -475,7 +500,7 @@ impl<R: IntoDynamicSend> Drop for SignalFutureResolver<R> {
 Solve Challenge 4: Impl 2 / 3
 ===
 
-```rust +line_numbers {3-7|10|11|12|13-19}
+```rust +line_numbers {3-20}
 impl<R: InParamTuple + IntoDynamicSend> FallibleSignalFuture<R> {
   fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Result<R, FallibleSignalFutureError>> {
     let mut data = self.data.lock().unwrap();
@@ -522,5 +547,3 @@ impl<R: InParamTuple + IntoDynamicSend> Future for SignalFuture<R> {
   }
 }
 ```
-
-<!-- end_slide -->
