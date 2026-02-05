@@ -363,7 +363,7 @@ pub fn godot_task(future: impl Future<Output = ()> + 'static) -> TaskHandle {
 
 <!-- end_slide -->
 
-Challenge 3: Godot Objects Are Neither `Send` Or `Sync`
+Challenge 3: Objects Are Neither `Send` Or `Sync`
 ===
 
 - Godot objects are not thread safe.
@@ -417,7 +417,7 @@ impl<T> ThreadConfined<T> {
 
 <!-- end_slide -->
 
-Challenge 4: Signal-Objects Can Be Freed at any Time
+Challenge 4: Signal-Objects Can Be Freed any Time
 ===
 
 - Most signal objects are manually managed.
